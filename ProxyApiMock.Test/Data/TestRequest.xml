@@ -1,0 +1,30 @@
+<Root>
+	<Endpoint></Endpoint>
+	<Response>
+		<Headers>
+			<Header1>header1</Header1>
+			<Header2>header2</Header2>
+			<content-type>application/xml</content-type>
+		</Headers>
+		<Body>
+			<Employees>
+				<Employee>
+					<Id>E001</Id>
+					<Name>John Doe</Name>
+					<Department>Finance</Department>
+					<Email>johndoe@example.com</Email>
+				</Employee>
+				<Employee>
+					<Id>E002</Id>
+					<Name>Jane Smith</Name>
+					<Department>Marketing</Department>
+					<Email>janesmith@example.com</Email>
+				</Employee>
+			</Employees>
+			<Company>
+				<Name>Tech Solutions</Name>
+				<Location>New York</Location>
+			</Company>
+		</Body>
+	</Response>
+</Root>

@@ -1,0 +1,21 @@
+﻿{
+  "Status code": 500,
+  "employees": [
+    {
+      "id": "E001",
+      "name": "John Doe",
+      "department": "Finance",
+      "email": "johndoe@example.com"
+    },
+    {
+      "id": "E002",
+      "name": "Jane Smith",
+      "department": "Marketing",
+      "email": "janesmith@example.com"
+    }
+  ],
+  "company": {
+    "name": "Tech Solutions",
+    "location": "New York"
+  }
+}

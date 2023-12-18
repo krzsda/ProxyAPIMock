@@ -1,0 +1,32 @@
+﻿{
+  "Requests": [
+    {
+      "endpoint": "",
+      "mockparams": {
+        "paraint": "1",
+        "param1": "value1"
+      },
+      "response": {
+        "headers": {
+          "header1": "header1",
+          "header2": "header2"
+        },
+        "body": "<Employees>\r\n\t<Employee>\r\n\t\t<Id>E004</Id>\r\n\t\t<Name>Carmen Doe</Name>\r\n\t\t<Department>Finance</Department>\r\n\t\t<Email>johndoe@example.com</Email>\r\n\t</Employee>\r\n\t<Employee>\r\n\t\t<Id>E002</Id>\r\n\t\t<Name>Jane Smith</Name>\r\n\t\t<Department>Marketing</Department>\r\n\t\t<Email>janesmith@example.com</Email>\r\n\t</Employee>\r\n\t<Company>\r\n\t\t<Name>Tech Solutions</Name>\r\n\t\t<Location>New York</Location>\r\n\t</Company>\r\n</Employees>"
+      }
+    },
+    {
+      "endpoint": "",
+      "mockparams": {
+        "paraint": "2",
+        "param1": "value3"
+      },
+      "response": {
+        "headers": {
+          "header1": "header1",
+          "header2": "header2"
+        },
+        "body": "<Employees>\r\n\t<Employee>\r\n\t\t<Id>E007</Id>\r\n\t\t<Name>Carmen Doe</Name>\r\n\t\t<Department>IT</Department>\r\n\t\t<Email>carmendoe@example.com</Email>\r\n\t</Employee>\r\n\t<Employee>\r\n\t\t<Id>E002</Id>\r\n\t\t<Name>Jane Smith</Name>\r\n\t\t<Department>Marketing</Department>\r\n\t\t<Email>janesmith@example.com</Email>\r\n\t</Employee>\r\n\t<Company>\r\n\t\t<Name>Tech Solutions</Name>\r\n\t\t<Location>New York</Location>\r\n\t</Company>\r\n</Employees>"
+      }
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+﻿{
+  "Requests": [
+    {
+      "endpoint": "/api1",
+      "headers": {
+        "header1": "header1",
+        "header2": "header2"
+      },
+      "mockparams": {
+        "param1int": "1",
+        "param2": "param2"
+      },
+      "response": {
+        "headers": {
+          "header1": "header1",
+          "header2": "header2"
+        },
+        "body": "body1"
+      }
+    },
+    {
+      "endpoint": "/api1",
+      "body": "your_body_content_here",
+      "headers": {
+        "header1": "header1",
+        "header2": "header2"
+      },
+      "mockparams": {
+        "param1": "1",
+        "param2": "value2"
+      },
+      "response": {
+        "headers": [
+          {
+            "name1": "value1",
+            "name2": "value2"
+          }
+        ],
+        "body": "body2"
+      }
+    },
+    {
+      "endpoint": "/api2",
+      "headers": {
+        "header1": "header1",
+        "header2": "header2"
+      },
+      "mockparams": {
+        "param1int": "1",
+        "param2": "param2"
+      },
+      "response": {
+        "headers": {
+          "name1": "value1",
+          "name2": "value2"
+        },
+        "body": "body1"
+      }
+    },
+    {
+      "endpoint": "/api2",
+      "mockparams": {
+        "param1int": "1",
+        "param2": "param2",
+        "body": "your_body_content_here"
+      },
+      "response": {
+        "headers": {
+          "header1": "value1",
+          "header2": "value2"
+        },
+        "body": "body2"
+      }
+    }
+  ]
+}

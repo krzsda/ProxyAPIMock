@@ -1,0 +1,11 @@
+{
+  "endpoint": "api1",
+  "response": {
+    "headers": {
+      "content-type": "appplication\\json",
+      "header1": "header1",
+      "header2": "header2"
+    },
+    "body": "{\r\n  \"params\": [\r\n    {\r\n      \"paraint\": \"1\",\r\n      \"param1\": \"value2\"\r\n    },\r\n    {\r\n\t  \"paraint\": \"2\",\r\n      \"param1\": \"value2\"\r\n    }\r\n  ]\r\n}"
+  }
+}

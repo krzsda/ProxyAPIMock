@@ -1,0 +1,11 @@
+{
+  "endpoint": "api1",
+  "response": {
+    "headers": {
+      "content-type": "appplication\\json",
+      "header1": "header1",
+      "header2": "header2"
+    },
+    "body": "{\"employees\": [}\r\n"
+  }
+}

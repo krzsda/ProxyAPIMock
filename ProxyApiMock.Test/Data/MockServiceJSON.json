@@ -1,0 +1,32 @@
+﻿{
+  "Requests": [
+    {
+      "endpoint": "/api1",
+      "mockparams": {
+        "paraint": "1",
+        "param1": "value2"
+      },
+      "response": {
+        "headers": {
+          "header1": "header1",
+          "header2": "header2"
+        },
+        "body": "{\r\n  \"employees\": [\r\n    {\r\n      \"id\": \"E004\",\r\n      \"name\": \"John Doe\",\r\n      \"department\": \"Finance\",\r\n      \"email\": \"johndoe@example.com\"\r\n    },\r\n    {\r\n      \"id\": \"E002\",\r\n      \"name\": \"Jane Smith\",\r\n      \"department\": \"Marketing\",\r\n      \"email\": \"janesmith@example.com\"\r\n    }\r\n  ],\r\n  \"company\": {\r\n    \"name\": \"Tech Solutions\",\r\n    \"location\": \"New York\"\r\n  }\r\n}\r\n"
+      }
+    },
+    {
+      "endpoint": "/api2",
+      "mockparams": {
+        "paraint": "2",
+        "param1": "value3"
+      },
+      "response": {
+        "headers": {
+          "header1": "header1",
+          "header2": "header2"
+        },
+        "body": "{\r\n  \"employees\": [\r\n    {\r\n      \"id\": \"E007\",\r\n      \"name\": \"Carmen Doe\",\r\n      \"department\": \"Marketing\",\r\n      \"email\": \"johndoe@example.com\"\r\n    },\r\n    {\r\n      \"id\": \"E002\",\r\n      \"name\": \"Jane Smith\",\r\n      \"department\": \"Marketing\",\r\n      \"email\": \"janesmith@example.com\"\r\n    }\r\n  ],\r\n  \"company\": {\r\n    \"name\": \"Tech Solutions\",\r\n    \"location\": \"New York\"\r\n  }\r\n}\r\n"
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<Request>
+	<Endpoint></Endpoint>
+	<Response>
+		<Headers>
+			<ContentType>appplication/json</ContentType>
+			<Header1>header1</Header1>
+			<Header2>header2</Header2>
+		</Headers>
+		<Body>
+			<Root>
+				<Params>
+					<Param>
+						<Paraint>1</Paraint>
+						<Param1>value1</Param1>
+					</Param>
+					<Param>
+						<Paraint>2</Paraint>
+						<Param1>value2</Param1>
+					</Param>
+				</Params>
+			</Root>
+		</Body>
+	</Response>
+</Request>

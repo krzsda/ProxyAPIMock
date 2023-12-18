@@ -1,0 +1,21 @@
+﻿<ResponseMessage>
+	<StatusCode>500</StatusCode>
+	<Employees>
+		<Employee>
+			<Id>E001</Id>
+			<Name>John Doe</Name>
+			<Department>Finance</Department>
+			<Email>johndoe@example.com</Email>
+		</Employee>
+		<Employee>
+			<Id>E002</Id>
+			<Name>Jane Smith</Name>
+			<Department>Marketing</Department>
+			<Email>janesmith@example.com</Email>
+		</Employee>
+		<Company>
+			<Name>Tech Solutions</Name>
+			<Location>New York</Location>
+		</Company>
+	</Employees>
+</ResponseMessage>
