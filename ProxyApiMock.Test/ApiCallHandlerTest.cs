@@ -128,7 +128,7 @@ namespace ProxyApiMock.Test
         }
 
         [Fact]
-        public async Task BuildRequestAsync_ProcessesXmlCorrectly()
+        public async Task BuildRequestAsync_ProcessesXmlCorrectly_WithoutMock()
         {
             var xmlBodyResponse = File.ReadAllText("Data/TestResponse.xml");
             var mockHttpFactory = GetMockHttpFactory(xmlBodyResponse);

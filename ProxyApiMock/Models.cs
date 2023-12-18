@@ -75,6 +75,6 @@ namespace ProxyApiMock
     public class ApiRequests
     {
         [JsonProperty("Requests")]
-        public List<Request> Requests { get; set; }
+        public Request[] Requests { get; set; }
     }
 }

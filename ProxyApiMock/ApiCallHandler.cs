@@ -180,7 +180,7 @@
                     var requestInFile = new List<Request>();
                     try
                     {
-                        requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString()).Requests;
+                        requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString()).Requests.ToList();
                     }
                     catch (JsonException ex)
                     {
@@ -235,8 +235,8 @@
 
         public bool HasFileChanged(string filePath)
         {
-            var useFileCash = bool.Parse(_configuration["UseFileCache"]);
-            if (!useFileCash)
+            var useFileCache = bool.Parse(_configuration["UseFileCache"]);
+            if (!useFileCache)
             {
                 return true;
             }

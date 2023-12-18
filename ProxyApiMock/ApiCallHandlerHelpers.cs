@@ -35,7 +35,6 @@
 
         public static string FindValueInBody(string body, string parameter)
         {
-
             if (string.IsNullOrWhiteSpace(body))
             {
                 return string.Empty;
@@ -46,38 +45,47 @@
             try
             {
                 var jsonObj = JObject.Parse(body);
-                return FindValueInJObject(jsonObj, parameter);
+                return FindValueInJObject(jsonObj, parameter); // Implement this method for JSON
             }
             catch (JsonReaderException)
             {
+                // Not JSON, try XML
             }
-
 
             try
             {
                 var xmlObj = XDocument.Parse(body);
-                var atribute = xmlObj.Descendants()
-                    .SelectMany(e => e.Attributes())
-                    .FirstOrDefault(a => string.Equals(a.Name.LocalName, parameter, StringComparison.InvariantCultureIgnoreCase));
-
-                if (atribute != null)
-                {
-                    return atribute.Value;
-                }
-                var element = xmlObj.Descendants()
-                    .FirstOrDefault(e => e.Attributes()
-                        .Any(a => a.Name.LocalName.Equals("name", StringComparison.InvariantCultureIgnoreCase) &&
-                                  a.Value.Equals(parameter, StringComparison.InvariantCultureIgnoreCase)));
-                if (element != null)
-                {
-                    return element.Value;
-                }
+                // First, try to find it as an attribute
+                return FindValueInBodyXml(xmlObj, parameter);
             }
             catch (XmlException)
             {
+                // Invalid XML
             }
 
             return string.Empty;
+        }
+
+        private static string? FindValueInBodyXml(XDocument xmlObj, string parameter)
+        {
+            // Search for the attribute irrespective of case
+            var attribute = xmlObj.Descendants()
+                          .Attributes()
+                          .FirstOrDefault(attr => string.Equals(attr.Name.LocalName, parameter, StringComparison.InvariantCultureIgnoreCase));
+            if (attribute != null)
+            {
+                return attribute.Value;
+            }
+
+            // If not found as an attribute, try to find it as an element, also irrespective of case
+            var element = xmlObj.Descendants()
+                                .FirstOrDefault(el => string.Equals(el.Name.LocalName, parameter, StringComparison.InvariantCultureIgnoreCase));
+            if (element != null)
+            {
+                return element.Value;
+            }
+
+            return null;
         }
 
         private static string FindValueInJObject(JToken token, string key)

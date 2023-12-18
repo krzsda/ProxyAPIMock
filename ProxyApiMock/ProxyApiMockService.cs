@@ -21,13 +21,14 @@
         private readonly IConfiguration _configuration;
         private readonly IFileReader _fileReader;
         private List<IHost> _hosts = new List<IHost>();
+        private string _directory;
 
         public ProxyApiMockService(IHttpClientFactory httpClientFactory, IFileReader fileReader, IConfiguration configuration)
         {
             var directory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             // Configure Serilog
 
-            Environment.CurrentDirectory = directory;
+            _directory = directory;
             _httpClientFactory = httpClientFactory;
             _fileReader = fileReader;
             _configuration = configuration;
@@ -42,13 +43,13 @@
 
                 var logger = new LoggerConfiguration()
                     .WriteTo.Console()
-                    .WriteTo.File(Path.Combine(Environment.CurrentDirectory, "Logs", service.Name, "ProxyApiHandler.log"))
+                    .WriteTo.File(Path.Combine(_directory, "Logs", service.Name, "ProxyApiHandler.log"))
                     .CreateLogger();
                 var handler = new ApiCallHandler(_httpClientFactory, service, logger, _fileReader, _configuration);
 
                 var host = CreateHandlerHost(service, handler);
                 _hosts.Add(host);
-                host.StartAsync(stoppingToken);
+                await host.StartAsync(stoppingToken);
                 logger.Information("Started host for Config: {Name} proxying to {Url} on port: {Port}", service.Name, service.Url, handler.Port);
 
             }
