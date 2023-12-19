@@ -31,7 +31,7 @@ public class Program
         //var services = config.GetSection("Services").Get<List<Service>>();
         //Log.Information("From {object}", JsonConvert.SerializeObject(services));
         //Log.Information($"Services count: {services?.Count}");
-        //var hostBuilder = CreateHostBuilder(args);
+        var hostBuilder = CreateHostBuilder(args);
 
         var host = hostBuilder.Build();
 
