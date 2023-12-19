@@ -13,6 +13,7 @@
     using Microsoft.AspNetCore.Builder;
     using System.IO;
     using Newtonsoft.Json;
+    using System.Net.Mime;
 
     public class ProxyApiMockService : BackgroundService
     {
@@ -67,12 +68,14 @@
                     {
                         app.Run(async context =>
                         {
+                            var a = ApiCallHandlerHelpers.FindTextInstance(context.Request.ContentType);
+
                             var requestContent = await new StreamReader(context.Request.Body).ReadToEndAsync();
                             var requestMessage = new HttpRequestMessage
                             {
                                 Method = new HttpMethod(context.Request.Method),
                                 RequestUri = new Uri($"{service.Url}{context.Request.Path}"),
-                                Content = new StringContent(requestContent, Encoding.UTF8, context.Request.ContentType)
+                                Content = new StringContent(requestContent, Encoding.UTF8, a)
                             };
 
                             // Copy headers from the incoming request to the outgoing request

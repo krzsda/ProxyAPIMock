@@ -75,8 +75,7 @@
                     var contentType = mockedRequest.Key.Response.Headers.FirstOrDefault(x => x.Key.Equals("Content-type", StringComparison.InvariantCultureIgnoreCase));
                     if (contentType.Value != null)
                     {
-                        var a = FindTextInstance(contentType.Value);
-                        response.Content = new StringContent(BodyAsString, Encoding.UTF8, a);
+                        response.Content = new StringContent(BodyAsString, Encoding.UTF8, ApiCallHandlerHelpers.FindTextInstance(contentType.Value));
                     }
                     else
                     {
@@ -102,7 +101,6 @@
             var requestBodyByte = await request.Content.ReadAsByteArrayAsync();
             var requestBody = Encoding.UTF8.GetString(requestBodyByte);
             _logger.Debug("Received {Method} request at {Url}. Call value: {CallValue}", request.Method, request.RequestUri.AbsoluteUri.ToString(), requestBody is null ? string.Empty : requestBody);
-            var requestHeaders = new Dictionary<string, string>();
 
             try
             {
@@ -115,31 +113,12 @@
                 _ = ApiCallHandlerHelpers.RemoveRestrictedHeaders(request);
                 HttpResponseMessage realApiResponse = await httpClient.SendAsync(request);
 
-                var bodyString = await realApiResponse.Content.ReadAsStringAsync();
-
-                var contentHeaders = realApiResponse.Content.Headers.ToDictionary(x => x.Key, x => x.Value.FirstOrDefault());
-
-                var mappedRequest = new Request
-                {
-                    Endpoint = request.RequestUri.AbsoluteUri,
-                    Response = new Response
-                    {
-                        Body = bodyString,
-                        Headers = realApiResponse.Headers.ToDictionary(x => x.Key,
-                                                                       x => x.Value.FirstOrDefault()),
-                        StatusCode = (int)realApiResponse.StatusCode,
-                    },
-                };
-                foreach (var header in contentHeaders)
-                {
-                    mappedRequest.Response.Headers[header.Key] = header.Value;
-                }
                 // Add Content-Type header if it doesn't exist, otherwise the response will be returned as empty
                 _logger.Debug("Sending Real API call to " + request.RequestUri.AbsoluteUri + FinishedLogSrting + stopwatch.ElapsedMilliseconds);
 
                 try
                 {
-                    await SaveCallToFile(mappedRequest, _service.Name);
+                    await SaveCallToFile(request, realApiResponse, _service.Name);
                 }
                 catch (Exception ex)
                 {
@@ -184,7 +163,7 @@
                     }
                     catch (JsonException ex)
                     {
-                        _logger.Error("Error while deserializing mocked requests", ex);
+                        _logger.Error("Error while deserializing mocked requests {ex}", ex);
                     }
 
                     foreach (var item in _requests)
@@ -213,6 +192,7 @@
 
         private static async Task<bool> HasAllParams(KeyValuePair<Request, byte> mockedRequest, HttpRequestMessage request)
         {
+
             var requestContent = await request.Content.ReadAsStringAsync();
             var endpoint = request.RequestUri.AbsolutePath == "/" ? string.Empty : request.RequestUri.AbsolutePath;
             if (mockedRequest.Key.Endpoint != endpoint)
@@ -251,22 +231,33 @@
             return true; // File is new or being tracked for the first time
         }
 
-        public static string FindTextInstance(string input)
-        {
-            var pattern = @"text\/([^;]+)";
-            var match = Regex.Match(input, pattern);
 
-            if (match.Success && match.Groups.Count > 1)
+        public async Task SaveCallToFile(HttpRequestMessage request, HttpResponseMessage response, string serviceName)
+        {
+            var requestBodyByte = await request.Content.ReadAsByteArrayAsync();
+            var requestBody = Encoding.UTF8.GetString(requestBodyByte);
+            var bodyString = await response.Content.ReadAsStringAsync();
+
+            var contentHeaders = response.Content.Headers.ToDictionary(x => x.Key, x => x.Value.FirstOrDefault());
+
+            var mappedRequest = new
             {
-                return "text/"+match.Groups[1].Value.Trim();
+                Endpoint = request.RequestUri.AbsoluteUri,
+                Body = requestBody,
+                Headers = request.Headers.ToDictionary(x=>x.Key, x => x.Value.FirstOrDefault()),
+                Response = new Response
+                {
+                    Body = bodyString,
+                    Headers = response.Headers.ToDictionary(x => x.Key,
+                                                                   x => x.Value.FirstOrDefault()),
+                    StatusCode = (int)response.StatusCode,
+                }
+            };
+
+            foreach (var header in contentHeaders)
+            {
+                mappedRequest.Response.Headers[header.Key] = header.Value;
             }
-
-            return null;
-        }
-
-
-        public async Task SaveCallToFile(Request request, string serviceName)
-        {
             // Save the log into a new file with the current timestamp and call value in the name
             var logDirectory = Path.Combine($"{_baseDirectory}/Logs", $"{serviceName}");
             string baseFileName = $"{logDirectory}/{DateTime.UtcNow:yyyy-MM-dd_hh-mm-ss-fff}";
@@ -289,7 +280,7 @@
                 }
                 await File.WriteAllTextAsync(fileName,
                     String.Concat(
-                        JsonConvert.SerializeObject(request, Newtonsoft.Json.Formatting.Indented)
+                        JsonConvert.SerializeObject(mappedRequest, Newtonsoft.Json.Formatting.Indented)
                         ));
             }
             catch (Exception ex)

@@ -10,6 +10,7 @@
     using System.Xml.Linq;
 
     using System.Net.Http;
+    using System.Text.RegularExpressions;
 
     public static class ApiCallHandlerHelpers
     {
@@ -162,6 +163,19 @@
             string restOfUrl = normalizedUrl.Substring(protocolEnd).Replace("//", "/");
 
             return new Uri(protocol + restOfUrl);
+        }
+
+        public static string FindTextInstance(string input)
+        {
+            var pattern = @"text\/([^;]+)";
+            var match = Regex.Match(input, pattern);
+
+            if (match.Success && match.Groups.Count > 1)
+            {
+                return "text/" + match.Groups[1].Value.Trim();
+            }
+
+            return null;
         }
     }
 }
