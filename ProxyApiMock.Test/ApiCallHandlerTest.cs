@@ -75,7 +75,7 @@ namespace ProxyApiMock.Test
             var mockRequestMessage = CreateRequestMessageWithBody("application/json", mockedRequestJson.Response.Body, ApiCallHandlerHelpers.GetUri(_testServices["json"].Url, mockedRequestJson.Endpoint), mockedRequestJson.Response.Headers);
             var mockFileReader = GetFileReaderWithContent(
                 JsonConvert.SerializeObject(
-                    GetTestRequests("MockServiceJSON")));
+                    GetTestApiRequests("MockServiceJSON")));
             var mockHttpFactory = GetMockHttpFactory(File.ReadAllText("Data/TestResponse.json"));
             var testhandler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
 
@@ -97,7 +97,7 @@ namespace ProxyApiMock.Test
             var mockRequestMessage = CreateRequestMessageWithBody("application/xml", xmlBodyRequest, ApiCallHandlerHelpers.GetUri(_testServices["xml"].Url, endpoint), headers);
             var mockFileReader = GetFileReaderWithContent(
                 JsonConvert.SerializeObject(
-                    GetTestRequests("MockServiceXML")));
+                    GetTestApiRequests("MockServiceXML")));
             var mockHttpFactory = GetMockHttpFactory(File.ReadAllText("Data/TestResponse.xml"));
             var testhandler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
 
@@ -116,7 +116,7 @@ namespace ProxyApiMock.Test
             var jsonObject = JsonConvert.DeserializeObject<Request>(jsonBody);
             var mockRequestMessage = CreateRequestMessageWithBody("application/json", jsonBody, ApiCallHandlerHelpers.GetUri(_testServices["json"].Url, jsonObject.Endpoint), jsonObject.Response.Headers);
 
-            var mockFileReader = GetFileReaderWithContent(JsonConvert.SerializeObject(GetTestRequests("MockServiceJSON")));
+            var mockFileReader = GetFileReaderWithContent(JsonConvert.SerializeObject(GetTestApiRequests("MockServiceJSON")));
 
             var handler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
             var response = await handler.SendRequestAsync(mockRequestMessage);
@@ -141,7 +141,7 @@ namespace ProxyApiMock.Test
                 .ToDictionary(x => x.Name.LocalName, x => x.Value);
 
             var mockRequestMessage = CreateRequestMessageWithBody("application/xml", xmlBodyRequest, ApiCallHandlerHelpers.GetUri(_testServices["xml"].Url, endpoint), headers);
-            var mockFileReader = GetFileReaderWithContent(JsonConvert.SerializeObject(GetTestRequests("MockServiceXML")));
+            var mockFileReader = GetFileReaderWithContent(JsonConvert.SerializeObject(GetTestApiRequests("MockServiceXML")));
 
             var handler = new ApiCallHandler(mockHttpFactory.Object, _testServices["xml"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
             var response = await handler.SendRequestAsync(mockRequestMessage);
@@ -203,28 +203,25 @@ namespace ProxyApiMock.Test
             return servicesDict;
         }
 
-        private List<Request> GetTestRequests(string serviceName)
+        private ApiRequests GetTestApiRequests(string serviceName)
         {
-            var requests = new List<Request>();
 
             var files = Directory.EnumerateFiles("Data", serviceName + ".json");
 
-            foreach (var file in files)
-            {
+            var file = files.FirstOrDefault();
                 string fileExtension = Path.GetExtension(file).ToLower();
 
-                if (fileExtension == ".json")
+            if (fileExtension == ".json")
+            {
+                string jsonContent = File.ReadAllText(file);
+                var request = JsonConvert.DeserializeObject<ApiRequests>(jsonContent);
+                if (request != null)
                 {
-                    string jsonContent = File.ReadAllText(file);
-                    var request = JsonConvert.DeserializeObject<ApiRequests>(jsonContent);
-                    if (request != null)
-                    {
-                        requests.AddRange(request.Requests);
-                    }
+                    return request;
                 }
             }
 
-            return requests;
+            return new ApiRequests();
         }
     }
 }

@@ -3,7 +3,6 @@
     using System;
     using System.Net;
     using System.Net.Http;
-    using System.Reflection;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -13,7 +12,7 @@
     using ProxyApiMock.Interfaces;
     using Microsoft.AspNetCore.Builder;
     using System.IO;
-    using Microsoft.AspNetCore.DataProtection.KeyManagement;
+    using Newtonsoft.Json;
 
     public class ProxyApiMockService : BackgroundService
     {
@@ -25,21 +24,24 @@
 
         public ProxyApiMockService(IHttpClientFactory httpClientFactory, IFileReader fileReader, IConfiguration configuration)
         {
-            var directory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            // Configure Serilog
-
-            _directory = directory;
+            Log.Information("Setting the service up.");
+            _directory = Path.GetDirectoryName(AppContext.BaseDirectory);
             _httpClientFactory = httpClientFactory;
             _fileReader = fileReader;
             _configuration = configuration;
+            Log.Information("Finnished setting the service up.");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            Log.Information("Starting search for services in appsettings.json");
             var apiServices = _configuration.GetSection("Services").Get<List<Service>>();
+
+            Log.Information("Found {count}", apiServices.Count);
 
             foreach (var service in apiServices)
             {
+                Log.Information("Adding service {service}", service.Name);
 
                 var logger = new LoggerConfiguration()
                     .WriteTo.Console()
@@ -50,13 +52,13 @@
                 var host = CreateHandlerHost(service, handler);
                 _hosts.Add(host);
                 await host.StartAsync(stoppingToken);
-                logger.Information("Started host for Config: {Name} proxying to {Url} on port: {Port}", service.Name, service.Url, handler.Port);
-
+                Log.Information("Started host for Config: {Name} proxying to {Url} on port: {Port} - logging into {directory}", service.Name, service.Url, handler.Port, _directory); ;
             }
         }
 
         private IHost CreateHandlerHost(Service service,IMockApi handler)
         {
+            Log.Information("Starting to build handler for {name} to {url}", service.Name, service.Url);
             var builder = Host.CreateDefaultBuilder()
                 .ConfigureWebHostDefaults(webBuilder =>
                 {

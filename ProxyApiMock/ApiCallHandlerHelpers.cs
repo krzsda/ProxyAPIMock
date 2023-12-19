@@ -13,6 +13,11 @@
 
     public static class ApiCallHandlerHelpers
     {
+        public static Uri GetUri(string baseUrl, string endpoint)
+        {
+            return new Uri(NormalizeStringUri(baseUrl), endpoint);
+        }
+
 
         public static Task RemoveRestrictedHeaders(HttpRequestMessage request)
         {
@@ -85,6 +90,16 @@
                 return element.Value;
             }
 
+            // Search for an element with an attribute 'name' matching the parameter
+            element = xmlObj.Descendants()
+                                .FirstOrDefault(el => el.Attributes()
+                                                        .Any(attr => string.Equals(attr.Name.LocalName, "name", StringComparison.InvariantCultureIgnoreCase) &&
+                                                                     string.Equals(attr.Value, parameter, StringComparison.InvariantCultureIgnoreCase)));
+            if (element != null)
+            {
+                return element.Value.Trim();
+            }
+
             return null;
         }
 
@@ -147,11 +162,6 @@
             string restOfUrl = normalizedUrl.Substring(protocolEnd).Replace("//", "/");
 
             return new Uri(protocol + restOfUrl);
-        }
-
-        public static Uri GetUri(string baseUrl, string endpoint)
-        {
-            return new Uri(NormalizeStringUri(baseUrl), endpoint);
         }
     }
 }

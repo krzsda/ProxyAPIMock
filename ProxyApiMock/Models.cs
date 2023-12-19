@@ -11,15 +11,6 @@ namespace ProxyApiMock
 
     public class Service
     {
-        private Guid guid;
-        public Guid Id
-        {
-            get
-            {
-                guid = guid != Guid.Empty ? guid : Guid.NewGuid();
-                return guid;
-            }
-        }
 
         [JsonProperty("Name")]
         public string Name { get; set; }
@@ -30,15 +21,6 @@ namespace ProxyApiMock
 
     public class Request
     {
-        private Guid guid;
-        public Guid Id
-        {
-            get
-            {
-                guid = guid != Guid.Empty ? guid : Guid.NewGuid();
-                return guid;
-            }
-        }
         
         [JsonProperty("endpoint")]
         public string? Endpoint { get; set; }
@@ -52,15 +34,6 @@ namespace ProxyApiMock
 
     public class Response
     {
-        private Guid guid;
-        public Guid Id
-        {
-            get 
-            {
-                guid = guid != Guid.Empty ? guid : Guid.NewGuid();
-                return guid; 
-            }
-        }
 
         [JsonProperty("headers")]
         public Dictionary<string, string>? Headers { get; set; }
@@ -75,6 +48,6 @@ namespace ProxyApiMock
     public class ApiRequests
     {
         [JsonProperty("Requests")]
-        public Request[] Requests { get; set; }
+        public List<Request> Requests { get; set; }
     }
 }

@@ -35,7 +35,7 @@
         private readonly IFileReader _fileReader;
         private Dictionary<string, DateTime> _fileTimestamps = new Dictionary<string, DateTime>();
 
-        private ConcurrentDictionary<Guid, Request> _requests;
+        private ConcurrentDictionary<Request, byte> _requests;
         private static int _port = 57000;
 
         public int Port { get; }
@@ -47,8 +47,8 @@
         {
             _httpClientFactory = httpClientFactory;
             _service = service;
-            _baseDirectory = System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            _requests = new ConcurrentDictionary<Guid, Request>();
+            _baseDirectory = System.IO.Path.GetDirectoryName(AppContext.BaseDirectory);
+            _requests = new ConcurrentDictionary<Request, byte>();
             Port = _port;
             _port++;
             _logger = logger;
@@ -71,8 +71,8 @@
                     response.StatusCode = System.Net.HttpStatusCode.OK;
 
                     _logger.Information("Found a mocked request! Returning mocked response.");
-                    var BodyAsString = mockedRequest.Value.Response.Body;
-                    var contentType = mockedRequest.Value.Response.Headers.FirstOrDefault(x => x.Key.Equals("Content-type", StringComparison.InvariantCultureIgnoreCase));
+                    var BodyAsString = mockedRequest.Key.Response.Body;
+                    var contentType = mockedRequest.Key.Response.Headers.FirstOrDefault(x => x.Key.Equals("Content-type", StringComparison.InvariantCultureIgnoreCase));
                     if (contentType.Value != null)
                     {
                         var a = FindTextInstance(contentType.Value);
@@ -84,7 +84,7 @@
                     }
 
 
-                    mockedRequest.Value.Response.Headers.ToList().ForEach(x => {
+                    mockedRequest.Key.Response.Headers.ToList().ForEach(x => {
                         if (!x.Key.StartsWith("Content-", StringComparison.InvariantCultureIgnoreCase))
                         {
                             response.Headers.Add(x.Key, x.Value);
@@ -158,7 +158,7 @@
             return new HttpResponseMessage();
         }
 
-        public async Task<ConcurrentDictionary<Guid, Request>> GetMockedRequests()
+        public async Task<ConcurrentDictionary<Request, byte>> GetMockedRequests()
         {
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
@@ -180,7 +180,7 @@
                     var requestInFile = new List<Request>();
                     try
                     {
-                        requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString()).Requests.ToList();
+                        requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString()).Requests;
                     }
                     catch (JsonException ex)
                     {
@@ -194,7 +194,7 @@
 
                     foreach (var request in requestInFile)
                     {
-                        _requests.TryAdd(request.Id, request);
+                        _requests.TryAdd(request, 0);
                     }
                 }
             }
@@ -211,16 +211,16 @@
             return _requests;
         }
 
-        private static async Task<bool> HasAllParams(KeyValuePair<Guid, Request> mockedRequest, HttpRequestMessage request)
+        private static async Task<bool> HasAllParams(KeyValuePair<Request, byte> mockedRequest, HttpRequestMessage request)
         {
             var requestContent = await request.Content.ReadAsStringAsync();
             var endpoint = request.RequestUri.AbsolutePath == "/" ? string.Empty : request.RequestUri.AbsolutePath;
-            if (mockedRequest.Value.Endpoint != endpoint)
+            if (mockedRequest.Key.Endpoint != endpoint)
             {
                 return false;
             }
 
-            foreach (var parameter in mockedRequest.Value.Params)
+            foreach (var parameter in mockedRequest.Key.Params)
             {
 
                 var value = ApiCallHandlerHelpers.FindValueInBody(requestContent, parameter.Key);
