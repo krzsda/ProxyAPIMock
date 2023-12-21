@@ -37,7 +37,6 @@
         private Dictionary<string, DateTime> _fileTimestamps = new Dictionary<string, DateTime>();
 
         private ConcurrentDictionary<Request, byte> _requests;
-        private ConcurrentDictionary<string, ConcurrentDictionary<Request, byte>> _requestsInFiles;
         private int _port;
 
         public int Port
@@ -59,7 +58,6 @@
             _requests = new ConcurrentDictionary<Request, byte>();
             _logger = logger;
             _port = port;
-            _requestsInFiles = new ConcurrentDictionary<string, ConcurrentDictionary<Request, byte>>();
             _logger.Information("Starting endpoint at port: {ServicePort}", Port);
             _fileReader = fileReader;
             _configuration = configuration;
@@ -121,7 +119,6 @@
             try
             {
                 _logger.Debug("Sending Real API call to " + request.RequestUri);
-                _logger.Information("Didnt find a mock for request body: {body}", requestBody is null ? string.Empty : requestBody);
 
                 await ApiCallHandlerHelpers.RemoveRestrictedHeaders(request);
 
@@ -211,7 +208,8 @@
         {
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            bool hasChanged = false;
+
+
             var path = Path.Combine(_baseDirectory, "MockedRequests", $"{_service.Name}.json");
 
             try
@@ -224,18 +222,13 @@
 
                 if (HasFileChanged(path))
                 {
-
                     var fileData = await _fileReader.ReadAllTextAsync(path);
+
                     var requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString());
-                    hasChanged = true;
-
-                    _requestsInFiles[path] = new ConcurrentDictionary<Request, byte>();
-                    hasChanged = true;
-
                     foreach (var request in requestInFile.Requests)
                     {
                         request.Variables = requestInFile.VariablesForResponseBody;
-                        _requestsInFiles[path].TryAdd(request, 0);
+                        _requests.TryAdd(request, 0);
                     }
                 }
             }
@@ -260,15 +253,12 @@
                 {
                     if (HasFileChanged(file))
                     {
-
                         var fileData = await _fileReader.ReadAllTextAsync(file);
                         var requestsInFile = new ApiRequests();
                         try
                         {
                             requestsInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString());
                             _logger.Information("Found new items to load for {service} from {path}", _service.Name, file);
-                            _requestsInFiles[file] = new ConcurrentDictionary<Request, byte>();
-                            hasChanged = true;
                         }
                         catch (JsonException ex)
                         {
@@ -279,7 +269,7 @@
                         foreach (var request in requestsInFile.Requests)
                         {
                             request.Variables = requestsInFile.VariablesForResponseBody;
-                            _requestsInFiles[file].TryAdd(request, 0);
+                            _requests.TryAdd(request, 0);
                         }
                     }
                 }
@@ -288,27 +278,6 @@
             {
                 _logger.Error("Error when reading files from {path}:\n {ex}", path, ex.Message);
             }
-
-            try
-            {
-                if (hasChanged)
-                {
-                    _requests.Clear();
-                    foreach (var requests in _requestsInFiles.Values)
-                    {
-                        foreach (var request in requests.Keys)
-                        {
-                            _requests.TryAdd(request, 0);
-                        }
-                    }
-
-                }
-            }
-            catch (Exception)
-            {
-                return new ConcurrentDictionary<Request, byte>();
-            }
-
 
             stopwatch.Stop();
             _logger.Debug("Processed mocked requests in {elapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
