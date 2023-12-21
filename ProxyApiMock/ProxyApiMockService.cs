@@ -72,7 +72,7 @@
                         Log.Warning("Port {Port} is in use. Retrying with a different port.", handler.Port);
 
                         //_hosts.Remove // A method to increment the port in ApiCallHandler
-                        //retryCount++;
+                        retryCount++;
                     }
                 }
 
