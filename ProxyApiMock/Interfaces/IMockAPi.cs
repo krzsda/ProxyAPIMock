@@ -3,8 +3,8 @@
     public interface IMockApi
     {
         public Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage request);
-        public int Port { get; }
 
+        public int Port { get; }
     }
 
 }

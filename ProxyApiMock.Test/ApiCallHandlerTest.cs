@@ -15,6 +15,7 @@ namespace ProxyApiMock.Test
         private readonly Mock<ILogger> _mockLogger;
         private readonly Dictionary<string, Service> _testServices;
         private readonly Mock<IConfiguration> _mockConfiguration;
+        private readonly int _port = 44000;
 
         public ApiCallHandlerTest()
         {
@@ -64,7 +65,7 @@ namespace ProxyApiMock.Test
         {
             var mockFileReader = GetFileReaderWithContent("");
             var mockHttpFactory = GetMockHttpFactory("");
-            var testhandler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
+            var testhandler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object, _port);
             Assert.NotNull(testhandler);
         }
 
@@ -77,7 +78,7 @@ namespace ProxyApiMock.Test
                 JsonConvert.SerializeObject(
                     GetTestApiRequests("MockServiceJSON")));
             var mockHttpFactory = GetMockHttpFactory(File.ReadAllText("Data/TestResponse.json"));
-            var testhandler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
+            var testhandler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object, _port);
 
             var response = await testhandler.SendRequestAsync(mockRequestMessage);
             var retBody = "{\r\n  \"employees\": [\r\n    {\r\n      \"id\": \"E004\",\r\n      \"name\": \"John Doe\",\r\n      \"department\": \"Finance\",\r\n      \"email\": \"johndoe@example.com\"\r\n    },\r\n    {\r\n      \"id\": \"E002\",\r\n      \"name\": \"Jane Smith\",\r\n      \"department\": \"Marketing\",\r\n      \"email\": \"janesmith@example.com\"\r\n    }\r\n  ],\r\n  \"company\": {\r\n    \"name\": \"Tech Solutions\",\r\n    \"location\": \"New York\"\r\n  }\r\n}\r\n";
@@ -99,7 +100,7 @@ namespace ProxyApiMock.Test
                 JsonConvert.SerializeObject(
                     GetTestApiRequests("MockServiceXML")));
             var mockHttpFactory = GetMockHttpFactory(File.ReadAllText("Data/TestResponse.xml"));
-            var testhandler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
+            var testhandler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object, _port);
 
             var response = await testhandler.SendRequestAsync(mockRequestMessage);
             var retBody = "<Employees>\r\n\t<Employee>\r\n\t\t<Id>E004</Id>\r\n\t\t<Name>Carmen Doe</Name>\r\n\t\t<Department>Finance</Department>\r\n\t\t<Email>johndoe@example.com</Email>\r\n\t</Employee>\r\n\t<Employee>\r\n\t\t<Id>E002</Id>\r\n\t\t<Name>Jane Smith</Name>\r\n\t\t<Department>Marketing</Department>\r\n\t\t<Email>janesmith@example.com</Email>\r\n\t</Employee>\r\n\t<Company>\r\n\t\t<Name>Tech Solutions</Name>\r\n\t\t<Location>New York</Location>\r\n\t</Company>\r\n</Employees>";
@@ -118,7 +119,7 @@ namespace ProxyApiMock.Test
 
             var mockFileReader = GetFileReaderWithContent(JsonConvert.SerializeObject(GetTestApiRequests("MockServiceJSON")));
 
-            var handler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
+            var handler = new ApiCallHandler(mockHttpFactory.Object, _testServices["json"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object, _port);
             var response = await handler.SendRequestAsync(mockRequestMessage);
 
             // Assert that response is processed correctly based on JSON input
@@ -143,7 +144,7 @@ namespace ProxyApiMock.Test
             var mockRequestMessage = CreateRequestMessageWithBody("application/xml", xmlBodyRequest, ApiCallHandlerHelpers.GetUri(_testServices["xml"].Url, endpoint), headers);
             var mockFileReader = GetFileReaderWithContent(JsonConvert.SerializeObject(GetTestApiRequests("MockServiceXML")));
 
-            var handler = new ApiCallHandler(mockHttpFactory.Object, _testServices["xml"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object);
+            var handler = new ApiCallHandler(mockHttpFactory.Object, _testServices["xml"], _mockLogger.Object, mockFileReader.Object, _mockConfiguration.Object, _port);
             var response = await handler.SendRequestAsync(mockRequestMessage);
 
             Assert.NotNull(response);
@@ -205,23 +206,20 @@ namespace ProxyApiMock.Test
 
         private ApiRequests GetTestApiRequests(string serviceName)
         {
+            var apiRequests = new ApiRequests { Requests = new List<Request>() };
+            var files = Directory.EnumerateFiles("Data", $"{serviceName}*.json");
 
-            var files = Directory.EnumerateFiles("Data", serviceName + ".json");
-
-            var file = files.FirstOrDefault();
-                string fileExtension = Path.GetExtension(file).ToLower();
-
-            if (fileExtension == ".json")
+            foreach (var file in files)
             {
                 string jsonContent = File.ReadAllText(file);
-                var request = JsonConvert.DeserializeObject<ApiRequests>(jsonContent);
-                if (request != null)
+                var requestsFromFile = JsonConvert.DeserializeObject<ApiRequests>(jsonContent);
+                if (requestsFromFile != null && requestsFromFile.Requests != null)
                 {
-                    return request;
+                    apiRequests.Requests.AddRange(requestsFromFile.Requests);
                 }
             }
 
-            return new ApiRequests();
+            return apiRequests;
         }
     }
 }

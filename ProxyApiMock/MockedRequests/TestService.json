@@ -1,17 +1,26 @@
 ﻿{
+  //Example file - will not be copied when building the application so create a new one.
+  "variables_for_response_body": {
+    "variable1": "value1",
+    "variable2": "value2"
+  },
   "Requests": [
     {
       "endpoint": "/api1",
+      // will check the deserialized request body (XML/JSON), 
+      // look for a nodes named param1int and param2 and check if the value is equal
+      // to 1 and param2 respectively. All Mockparams have to be found to return the mock response.
       "mockparams": {
         "param1int": "1",
         "param2": "param2"
       },
       "response": {
+        "statusInt": 200,
         "headers": {
           "header1": "header1",
           "header2": "header2"
         },
-        "body": "body1"
+        "body": "This will be the body and {variable1} as value1 will be displayed."
       }
     },
     {
@@ -21,39 +30,12 @@
         "param2": "value2"
       },
       "response": {
-        "headers": {
-          "name1": "value1",
-          "name2": "value2"
-        },
-        "body": "body2"
-      }
-    },
-    {
-      "endpoint": "/api2",
-      "mockparams": {
-        "param1int": "1",
-        "param2": "param2"
-      },
-      "response": {
+        "statusInt": 200,
         "headers": {
           "name1": "value1",
           "name2": "value2"
         },
         "body": "body1"
-      }
-    },
-    {
-      "endpoint": "/api2",
-      "mockparams": {
-        "param1int": "1",
-        "param2": "param2"
-      },
-      "response": {
-        "headers": {
-          "header1": "value1",
-          "header2": "value2"
-        },
-        "body": "body2"
       }
     }
   ]

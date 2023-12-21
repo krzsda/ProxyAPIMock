@@ -14,6 +14,7 @@
     using System.IO;
     using Newtonsoft.Json;
     using System.Net.Mime;
+    using System.Net.Sockets;
 
     public class ProxyApiMockService : BackgroundService
     {
@@ -22,6 +23,8 @@
         private readonly IFileReader _fileReader;
         private List<IHost> _hosts = new List<IHost>();
         private string _directory;
+        private readonly int _handlerRetryLimit;
+        private static int _port = 57000;
 
         public ProxyApiMockService(IHttpClientFactory httpClientFactory, IFileReader fileReader, IConfiguration configuration)
         {
@@ -31,6 +34,7 @@
             _fileReader = fileReader;
             _configuration = configuration;
             Log.Information("Finnished setting the service up.");
+            _handlerRetryLimit = configuration.GetValue<int>("HandlerRetryLimit");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -48,15 +52,39 @@
                     .WriteTo.Console()
                     .WriteTo.File(Path.Combine(_directory, "Logs", service.Name, "ProxyApiHandler.log"))
                     .CreateLogger();
-                var handler = new ApiCallHandler(_httpClientFactory, service, logger, _fileReader, _configuration);
+                var handler = new ApiCallHandler(_httpClientFactory, service, logger, _fileReader, _configuration, _port);
 
-                var host = CreateHandlerHost(service, handler);
-                _hosts.Add(host);
-                await host.StartAsync(stoppingToken);
-                Log.Information("Started host for Config: {Name} proxying to {Url} on port: {Port} - logging into {directory}", service.Name, service.Url, handler.Port, _directory); ;
+                bool hostStarted = false;
+                int retryCount = 0;
+
+                while (!hostStarted && retryCount < _handlerRetryLimit)
+                {
+                    try
+                    {
+                        var host = CreateHandlerHost(service, handler);
+                        _hosts.Add(host);
+                        await host.StartAsync(stoppingToken);
+                        Log.Information("Started host for Config: {Name} proxying to {Url} on port: {Port} - logging into {directory}", service.Name, service.Url, handler.Port, _directory);
+                        hostStarted = true;
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is SocketException)
+                    {
+                        Log.Warning("Port {Port} is in use. Retrying with a different port.", handler.Port);
+
+                        //_hosts.Remove // A method to increment the port in ApiCallHandler
+                        //retryCount++;
+                    }
+                }
+
+                if (!hostStarted)
+                {
+                    Log.Error("Failed to start host for {Name} after {RetryLimit} attempts.", service.Name, _handlerRetryLimit);
+                }
             }
         }
 
+
+        //TODO: refactor
         private IHost CreateHandlerHost(Service service,IMockApi handler)
         {
             Log.Information("Starting to build handler for {name} to {url}", service.Name, service.Url);

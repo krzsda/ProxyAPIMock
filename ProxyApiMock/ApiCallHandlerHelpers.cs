@@ -71,6 +71,12 @@
 
             return string.Empty;
         }
+        public static string? Truncate(this string? value, int maxLength, string truncationSuffix = "\n...")
+        {
+            return value?.Length > maxLength
+                ? value.Substring(0, maxLength) + truncationSuffix
+                : value;
+        }
 
         private static string? FindValueInBodyXml(XDocument xmlObj, string parameter)
         {
@@ -103,6 +109,8 @@
 
             return null;
         }
+
+
 
         private static string FindValueInJObject(JToken token, string key)
         {

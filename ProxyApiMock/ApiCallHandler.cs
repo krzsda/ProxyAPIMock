@@ -22,6 +22,7 @@
     using System.Xml.Linq;
     using System.Runtime.Serialization;
     using System.Collections.Concurrent;
+    using System.Net;
 
     public class ApiCallHandler : IMockApi
     {
@@ -36,22 +37,27 @@
         private Dictionary<string, DateTime> _fileTimestamps = new Dictionary<string, DateTime>();
 
         private ConcurrentDictionary<Request, byte> _requests;
-        private static int _port = 57000;
+        private int _port;
 
-        public int Port { get; }
+        public int Port
+        {
+            get { return _port; }
+            private set { _port = value; }
+        }
 
 
 
 
-        public ApiCallHandler(IHttpClientFactory httpClientFactory, Service service, ILogger logger, IFileReader fileReader, IConfiguration configuration)
+
+
+        public ApiCallHandler(IHttpClientFactory httpClientFactory, Service service, ILogger logger, IFileReader fileReader, IConfiguration configuration, int port)
         {
             _httpClientFactory = httpClientFactory;
             _service = service;
             _baseDirectory = System.IO.Path.GetDirectoryName(AppContext.BaseDirectory);
             _requests = new ConcurrentDictionary<Request, byte>();
-            Port = _port;
-            _port++;
             _logger = logger;
+            _port = port;
             _logger.Information("Starting endpoint at port: {ServicePort}", Port);
             _fileReader = fileReader;
             _configuration = configuration;
@@ -59,7 +65,7 @@
 
         public async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage httpRequestMessage)
         {
-            _logger.Information("Finished Receiving {Method} request at {Url}.", httpRequestMessage.Method, httpRequestMessage.RequestUri.AbsoluteUri);
+            _logger.Information("Finished Receiving {Method} request with proxy to {Url}.", httpRequestMessage.Method, httpRequestMessage.RequestUri.AbsoluteUri);
 
             var mockedRequests = await GetMockedRequests();
 
@@ -68,11 +74,20 @@
                 if (await HasAllParams(mockedRequest, httpRequestMessage))
                 {
                     var response = new HttpResponseMessage();
-                    response.StatusCode = System.Net.HttpStatusCode.OK;
 
-                    _logger.Information("Found a mocked request! Returning mocked response.");
+                    response.StatusCode = mockedRequest.Key.Response.Status is null ? System.Net.HttpStatusCode.OK : (HttpStatusCode)mockedRequest.Key.Response.Status;
+
+                    _logger.Information("Found a mocked request for {request}\n\n Returning mocked response. Response: \n{response}",ApiCallHandlerHelpers.Truncate(await httpRequestMessage.Content.ReadAsStringAsync(), 200), ApiCallHandlerHelpers.Truncate(mockedRequest.Key.Response.Body, 200));
                     var BodyAsString = mockedRequest.Key.Response.Body;
                     var contentType = mockedRequest.Key.Response.Headers.FirstOrDefault(x => x.Key.Equals("Content-type", StringComparison.InvariantCultureIgnoreCase));
+                    if (mockedRequest.Key.Variables != null)
+                    {
+                        foreach (var variable in mockedRequest.Key.Variables)
+                        {
+                            BodyAsString = BodyAsString.Replace($"{{{variable.Key}}}", variable.Value);
+                        }
+                    }
+
                     if (contentType.Value != null)
                     {
                         response.Content = new StringContent(BodyAsString, Encoding.UTF8, ApiCallHandlerHelpers.FindTextInstance(contentType.Value));
@@ -81,7 +96,6 @@
                     {
                         response.Content = new StringContent(BodyAsString, Encoding.UTF8);
                     }
-
 
                     mockedRequest.Key.Response.Headers.ToList().ForEach(x => {
                         if (!x.Key.StartsWith("Content-", StringComparison.InvariantCultureIgnoreCase))
@@ -137,10 +151,64 @@
             return new HttpResponseMessage();
         }
 
+        //public async Task<ConcurrentDictionary<Request, byte>> GetMockedRequests_old()
+        //{
+        //    Stopwatch stopwatch = new Stopwatch();
+        //    stopwatch.Start();
+
+        //    var path = Path.Combine(_baseDirectory, "MockedRequests", $"{_service.Name}.json");
+
+        //    try
+        //    {
+
+        //        if (!Path.Exists(path))
+        //        {
+        //            _logger.Information("Did not found any mocked requests for service {serviceName} in {path}", _service.Name, path);
+        //        }
+
+        //        if (HasFileChanged(path))
+        //        {
+        //            var fileData = await _fileReader.ReadAllTextAsync(path);
+
+        //            var requestInFile = new List<Request>();
+        //            try
+        //            {
+        //                requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString()).Requests;
+        //            }
+        //            catch (JsonException ex)
+        //            {
+        //                _logger.Error("Error while deserializing mocked requests {ex}", ex);
+        //            }
+
+        //            foreach (var item in _requests)
+        //            {
+        //                _requests.TryRemove(item);
+        //            }
+
+        //            foreach (var request in requestInFile)
+        //            {
+        //                _requests.TryAdd(request, 0);
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.Error("Error when reading file {ex}", ex.Message);
+        //        await Task.FromException(ex);
+        //    }
+
+
+
+        //    Log.Debug("GetMockedRequests took (milliseconds)" + FinishedLogSrting + stopwatch.ElapsedMilliseconds);
+        //    stopwatch.Stop();
+        //    return _requests;
+        //}
+
         public async Task<ConcurrentDictionary<Request, byte>> GetMockedRequests()
         {
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
+
 
             var path = Path.Combine(_baseDirectory, "MockedRequests", $"{_service.Name}.json");
 
@@ -156,38 +224,64 @@
                 {
                     var fileData = await _fileReader.ReadAllTextAsync(path);
 
-                    var requestInFile = new List<Request>();
-                    try
+                    var requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString());
+                    foreach (var request in requestInFile.Requests)
                     {
-                        requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString()).Requests;
-                    }
-                    catch (JsonException ex)
-                    {
-                        _logger.Error("Error while deserializing mocked requests {ex}", ex);
-                    }
-
-                    foreach (var item in _requests)
-                    {
-                        _requests.TryRemove(item);
-                    }
-
-                    foreach (var request in requestInFile)
-                    {
+                        request.Variables = requestInFile.VariablesForResponseBody;
                         _requests.TryAdd(request, 0);
+                    }
+                }
+            }
+
+            catch(Exception ex)
+            {
+                Log.Error("Failed reading single file. {ex}", ex.Message);
+            }
+
+            var directoryPath = Path.Combine(_baseDirectory, "MockedRequests");
+            var pattern = $"{_service.Name}*.json"; // Pattern to match files starting with _service.Name
+
+            try
+            {
+                var files = Directory.EnumerateFiles(directoryPath, pattern);
+                if (!files.Any())
+                {
+                    _logger.Information("Did not find any mocked requests for service {serviceName} in {path}", _service.Name, directoryPath);
+                }
+
+                foreach (var file in files)
+                {
+                    if (HasFileChanged(file))
+                    {
+                        var fileData = await _fileReader.ReadAllTextAsync(file);
+                        var requestsInFile = new ApiRequests();
+                        try
+                        {
+                            requestsInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString());
+                            _logger.Information("Found new items to load for {service} from {path}", _service.Name, file);
+                        }
+                        catch (JsonException ex)
+                        {
+                            _logger.Error("Error while deserializing mocked requests from {file}: {ex}", file, ex);
+                            continue; // Skip this file and continue with the next one
+                        }
+
+                        foreach (var request in requestsInFile.Requests)
+                        {
+                            request.Variables = requestsInFile.VariablesForResponseBody;
+                            _requests.TryAdd(request, 0);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error("Error when reading file {ex}", ex.Message);
-                await Task.FromException(ex);
+                _logger.Error("Error when reading files from {path}:\n {ex}", path, ex.Message);
             }
 
-
-
-            Log.Debug("GetMockedRequests took (milliseconds)" + FinishedLogSrting + stopwatch.ElapsedMilliseconds);
             stopwatch.Stop();
-            return _requests;
+            _logger.Debug("Processed mocked requests in {elapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
+            return _requests; // Return the final collection of requests
         }
 
         private static async Task<bool> HasAllParams(KeyValuePair<Request, byte> mockedRequest, HttpRequestMessage request)
@@ -220,6 +314,7 @@
             {
                 return true;
             }
+
             var lastWriteTime = File.GetLastWriteTimeUtc(filePath);
 
             if (_fileTimestamps.TryGetValue(filePath, out var previousWriteTime))
@@ -258,9 +353,11 @@
             {
                 mappedRequest.Response.Headers[header.Key] = header.Value;
             }
+
+            var apiCall = ApiCallHandlerHelpers.FindValueInBody(requestBody, "call");
             // Save the log into a new file with the current timestamp and call value in the name
             var logDirectory = Path.Combine($"{_baseDirectory}/Logs", $"{serviceName}");
-            string baseFileName = $"{logDirectory}/{DateTime.UtcNow:yyyy-MM-dd_hh-mm-ss-fff}";
+            string baseFileName = $"{logDirectory}/{apiCall}_{DateTime.UtcNow:yyyy-MM-dd_hh-mm-ss-fff}";
             string fileName;
             try
             {

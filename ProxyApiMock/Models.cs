@@ -30,6 +30,9 @@ namespace ProxyApiMock
 
         [JsonProperty("response")]
         public Response? Response { get; set; }
+
+        [JsonIgnore()]
+        public Dictionary<string, string>? Variables { get; set; }
     }
 
     public class Response
@@ -43,11 +46,17 @@ namespace ProxyApiMock
 
         [JsonProperty("body")]
         public string Body { get; set; }
+
+        [JsonProperty("statusInt")]
+        public int? Status { get; set; }
     }
 
     public class ApiRequests
     {
         [JsonProperty("Requests")]
         public List<Request> Requests { get; set; }
+
+        [JsonProperty("variables_for_response_body")]
+        public Dictionary<string, string>? VariablesForResponseBody { get; set; }
     }
 }
