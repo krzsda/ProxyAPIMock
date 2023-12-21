@@ -39,11 +39,11 @@
             return Task.CompletedTask;
         }
 
-        public static string FindValueInBody(string body, string parameter)
+        public static bool IsParameterValueInContent(string body, string parameter, string value)
         {
             if (string.IsNullOrWhiteSpace(body))
             {
-                return string.Empty;
+                return false;
             }
 
             body = body.Trim();
@@ -51,7 +51,7 @@
             try
             {
                 var jsonObj = JObject.Parse(body);
-                return FindValueInJObject(jsonObj, parameter); // Implement this method for JSON
+                return IsValueInBodyJson(jsonObj, parameter, value); // Implement this method for JSON
             }
             catch (JsonReaderException)
             {
@@ -62,14 +62,47 @@
             {
                 var xmlObj = XDocument.Parse(body);
                 // First, try to find it as an attribute
-                return FindValueInBodyXml(xmlObj, parameter);
+                return IsValueInBodyXml(xmlObj, parameter, value);
             }
             catch (XmlException)
             {
                 // Invalid XML
             }
 
-            return string.Empty;
+            return false;
+        }
+        
+        public static List<string> GetValuesForParameter(string body, string parameter)
+        {
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                return new List<string>();
+            }
+
+            body = body.Trim();
+
+            try
+            {
+                var jsonObj = JObject.Parse(body);
+                return GetValuesInJObject(jsonObj, parameter); // Implement this method for JSON
+            }
+            catch (JsonReaderException)
+            {
+                // Not JSON, try XML
+            }
+
+            try
+            {
+                var xmlObj = XDocument.Parse(body);
+                // First, try to find it as an attribute
+                return GetValuesFromXmlBody(xmlObj, parameter).ToList();
+            }
+            catch (XmlException)
+            {
+                // Invalid XML
+            }
+
+            return new List<string>();
         }
         public static string? Truncate(this string? value, int maxLength, string truncationSuffix = "\n...")
         {
@@ -78,55 +111,63 @@
                 : value;
         }
 
-        private static string? FindValueInBodyXml(XDocument xmlObj, string parameter)
+        private static bool IsValueInBodyXml(XDocument xmlObj, string parameter, string value)
+        {
+            foreach (var item in GetValuesFromXmlBody(xmlObj, parameter))
+            {
+                 if(string.Equals(item, value, StringComparison.InvariantCultureIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+        
+        private static bool IsValueInBodyJson(JObject jObject, string parameter, string value)
+        {
+            foreach (var item in GetValuesInJObject(jObject, parameter))
+            {
+                 if(string.Equals(item, value, StringComparison.InvariantCultureIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static IEnumerable<string> GetValuesFromXmlBody(XDocument xmlObj, string parameter)
         {
             // Search for the attribute irrespective of case
-            var attribute = xmlObj.Descendants()
+            var result = xmlObj.Descendants()
                           .Attributes()
-                          .FirstOrDefault(attr => string.Equals(attr.Name.LocalName, parameter, StringComparison.InvariantCultureIgnoreCase));
-            if (attribute != null)
-            {
-                return attribute.Value;
-            }
+                          .Where(attr => string.Equals(attr.Name.LocalName.Trim(), parameter, StringComparison.InvariantCultureIgnoreCase)).Select(x=>x.Value).ToList();
 
-            // If not found as an attribute, try to find it as an element, also irrespective of case
-            var element = xmlObj.Descendants()
-                                .FirstOrDefault(el => string.Equals(el.Name.LocalName, parameter, StringComparison.InvariantCultureIgnoreCase));
-            if (element != null)
-            {
-                return element.Value;
-            }
+            result.AddRange(xmlObj.Descendants()
+                    .Where(el => string.Equals(el.Name.LocalName.Trim(), parameter, StringComparison.InvariantCultureIgnoreCase)).Select(x=>x.Value));
 
-            // Search for an element with an attribute 'name' matching the parameter
-            element = xmlObj.Descendants()
-                                .FirstOrDefault(el => el.Attributes()
-                                                        .Any(attr => string.Equals(attr.Name.LocalName, "name", StringComparison.InvariantCultureIgnoreCase) &&
-                                                                     string.Equals(attr.Value, parameter, StringComparison.InvariantCultureIgnoreCase)));
-            if (element != null)
-            {
-                return element.Value.Trim();
-            }
-
-            return null;
+            result.AddRange(xmlObj.Descendants()
+                    .Where(el => el.Attributes()
+                                            .Any(attr => string.Equals(attr.Name.LocalName, "name", StringComparison.InvariantCultureIgnoreCase) &&
+                                                         string.Equals(attr.Value, parameter, StringComparison.InvariantCultureIgnoreCase))).Select(x=>x.Value));
+            return result;
         }
 
 
 
-        private static string FindValueInJObject(JToken token, string key)
+        private static List<string> GetValuesInJObject(JToken token, string key)
         {
+            List<string> values = new List<string>();
+
             if (token.Type == JTokenType.Object)
             {
                 foreach (var child in token.Children<JProperty>())
                 {
                     if (string.Equals(child.Name, key, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        return child.Value.ToString();
+                        values.Add(child.Value.ToString());
+                        // Don't return, continue looking for more.
                     }
-
-                    var result = FindValueInJObject(child.Value, key);
-                    if (!string.IsNullOrEmpty(result))
+                    else
                     {
-                        return result;
+                        values.AddRange(GetValuesInJObject(child.Value, key));
                     }
                 }
             }
@@ -134,15 +175,11 @@
             {
                 foreach (var child in token.Children())
                 {
-                    var result = FindValueInJObject(child, key);
-                    if (!string.IsNullOrEmpty(result))
-                    {
-                        return result;
-                    }
+                    values.AddRange(GetValuesInJObject(child, key));
                 }
             }
 
-            return string.Empty;
+            return values;
         }
 
         private static Uri NormalizeStringUri(string url)

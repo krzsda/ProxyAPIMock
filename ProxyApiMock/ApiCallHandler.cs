@@ -37,6 +37,7 @@
         private Dictionary<string, DateTime> _fileTimestamps = new Dictionary<string, DateTime>();
 
         private ConcurrentDictionary<Request, byte> _requests;
+        private ConcurrentDictionary<string, ConcurrentDictionary<Request, byte>> _requestsInFile;
         private int _port;
 
         public int Port
@@ -56,6 +57,7 @@
             _service = service;
             _baseDirectory = System.IO.Path.GetDirectoryName(AppContext.BaseDirectory);
             _requests = new ConcurrentDictionary<Request, byte>();
+            _requestsInFile = new ConcurrentDictionary<string, ConcurrentDictionary<Request, byte>>();
             _logger = logger;
             _port = port;
             _logger.Information("Starting endpoint at port: {ServicePort}", Port);
@@ -77,7 +79,6 @@
 
                     response.StatusCode = mockedRequest.Key.Response.Status is null ? System.Net.HttpStatusCode.OK : (HttpStatusCode)mockedRequest.Key.Response.Status;
 
-                    _logger.Information("Found a mocked request for {request}\n\n Returning mocked response. Response: \n{response}",ApiCallHandlerHelpers.Truncate(await httpRequestMessage.Content.ReadAsStringAsync(), 200), ApiCallHandlerHelpers.Truncate(mockedRequest.Key.Response.Body, 200));
                     var BodyAsString = mockedRequest.Key.Response.Body;
                     var contentType = mockedRequest.Key.Response.Headers.FirstOrDefault(x => x.Key.Equals("Content-type", StringComparison.InvariantCultureIgnoreCase));
                     if (mockedRequest.Key.Variables != null)
@@ -87,6 +88,7 @@
                             BodyAsString = BodyAsString.Replace($"{{{variable.Key}}}", variable.Value);
                         }
                     }
+                    _logger.Information("Found a mocked request for {request}\n\n Returning mocked response. Response: \n{response}", ApiCallHandlerHelpers.Truncate(await httpRequestMessage.Content.ReadAsStringAsync(), 200), BodyAsString);
 
                     if (contentType.Value != null)
                     {
@@ -115,7 +117,7 @@
             var requestBodyByte = await request.Content.ReadAsByteArrayAsync();
             var requestBody = Encoding.UTF8.GetString(requestBodyByte);
             _logger.Debug("Received {Method} request at {Url}. Call value: {CallValue}", request.Method, request.RequestUri.AbsoluteUri.ToString(), requestBody is null ? string.Empty : requestBody);
-
+            _logger.Information("Didn't find any ocks for request to {endpoint} with body:\n {body}", request.RequestUri.AbsoluteUri.ToString(), requestBody is null ? string.Empty : requestBody);
             try
             {
                 _logger.Debug("Sending Real API call to " + request.RequestUri);
@@ -209,6 +211,7 @@
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
+            var hasChanged = false;
 
             var path = Path.Combine(_baseDirectory, "MockedRequests", $"{_service.Name}.json");
 
@@ -223,12 +226,14 @@
                 if (HasFileChanged(path))
                 {
                     var fileData = await _fileReader.ReadAllTextAsync(path);
-
                     var requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString());
+
+                    hasChanged = true;
+                    _requestsInFile[path] = new ConcurrentDictionary<Request, byte>();
                     foreach (var request in requestInFile.Requests)
                     {
                         request.Variables = requestInFile.VariablesForResponseBody;
-                        _requests.TryAdd(request, 0);
+                        _requestsInFile[path].TryAdd(request, 0);
                     }
                 }
             }
@@ -259,6 +264,8 @@
                         {
                             requestsInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString());
                             _logger.Information("Found new items to load for {service} from {path}", _service.Name, file);
+                            hasChanged = true;
+                            _requestsInFile[file] = new ConcurrentDictionary<Request, byte>();
                         }
                         catch (JsonException ex)
                         {
@@ -269,7 +276,8 @@
                         foreach (var request in requestsInFile.Requests)
                         {
                             request.Variables = requestsInFile.VariablesForResponseBody;
-                            _requests.TryAdd(request, 0);
+
+                            _requestsInFile[file].TryAdd(request, 0);
                         }
                     }
                 }
@@ -279,9 +287,21 @@
                 _logger.Error("Error when reading files from {path}:\n {ex}", path, ex.Message);
             }
 
+            if (hasChanged)
+            {
+                _requests.Clear();
+                foreach (var requests in _requestsInFile.Values)
+                {
+                    foreach (var request in requests)
+                    {
+                        _requests.TryAdd(request.Key, 0);
+                    }
+                }
+            }
+
             stopwatch.Stop();
             _logger.Debug("Processed mocked requests in {elapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
-            return _requests; // Return the final collection of requests
+            return await Task.FromResult(_requests); // Return the final collection of requests
         }
 
         private static async Task<bool> HasAllParams(KeyValuePair<Request, byte> mockedRequest, HttpRequestMessage request)
@@ -297,8 +317,8 @@
             foreach (var parameter in mockedRequest.Key.Params)
             {
 
-                var value = ApiCallHandlerHelpers.FindValueInBody(requestContent, parameter.Key);
-                if (value != parameter.Value)
+                var isInContent = ApiCallHandlerHelpers.IsParameterValueInContent(requestContent, parameter.Key, parameter.Value);
+                if (!isInContent)
                 {
                     return false;
                 }
@@ -354,7 +374,7 @@
                 mappedRequest.Response.Headers[header.Key] = header.Value;
             }
 
-            var apiCall = ApiCallHandlerHelpers.FindValueInBody(requestBody, "call");
+            var apiCall = ApiCallHandlerHelpers.GetValuesForParameter(requestBody, "call").FirstOrDefault();
             // Save the log into a new file with the current timestamp and call value in the name
             var logDirectory = Path.Combine($"{_baseDirectory}/Logs", $"{serviceName}");
             string baseFileName = $"{logDirectory}/{apiCall}_{DateTime.UtcNow:yyyy-MM-dd_hh-mm-ss-fff}";
