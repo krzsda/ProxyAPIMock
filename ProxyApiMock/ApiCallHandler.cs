@@ -46,11 +46,6 @@
             private set { _port = value; }
         }
 
-
-
-
-
-
         public ApiCallHandler(IHttpClientFactory httpClientFactory, Service service, ILogger logger, IFileReader fileReader, IConfiguration configuration, int port)
         {
             _httpClientFactory = httpClientFactory;
@@ -152,59 +147,6 @@
 
             return new HttpResponseMessage();
         }
-
-        //public async Task<ConcurrentDictionary<Request, byte>> GetMockedRequests_old()
-        //{
-        //    Stopwatch stopwatch = new Stopwatch();
-        //    stopwatch.Start();
-
-        //    var path = Path.Combine(_baseDirectory, "MockedRequests", $"{_service.Name}.json");
-
-        //    try
-        //    {
-
-        //        if (!Path.Exists(path))
-        //        {
-        //            _logger.Information("Did not found any mocked requests for service {serviceName} in {path}", _service.Name, path);
-        //        }
-
-        //        if (HasFileChanged(path))
-        //        {
-        //            var fileData = await _fileReader.ReadAllTextAsync(path);
-
-        //            var requestInFile = new List<Request>();
-        //            try
-        //            {
-        //                requestInFile = JsonConvert.DeserializeObject<ApiRequests>(fileData.ToString()).Requests;
-        //            }
-        //            catch (JsonException ex)
-        //            {
-        //                _logger.Error("Error while deserializing mocked requests {ex}", ex);
-        //            }
-
-        //            foreach (var item in _requests)
-        //            {
-        //                _requests.TryRemove(item);
-        //            }
-
-        //            foreach (var request in requestInFile)
-        //            {
-        //                _requests.TryAdd(request, 0);
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.Error("Error when reading file {ex}", ex.Message);
-        //        await Task.FromException(ex);
-        //    }
-
-
-
-        //    Log.Debug("GetMockedRequests took (milliseconds)" + FinishedLogSrting + stopwatch.ElapsedMilliseconds);
-        //    stopwatch.Stop();
-        //    return _requests;
-        //}
 
         public async Task<ConcurrentDictionary<Request, byte>> GetMockedRequests()
         {

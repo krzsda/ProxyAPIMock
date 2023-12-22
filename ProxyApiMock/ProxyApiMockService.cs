@@ -66,6 +66,7 @@
                         await host.StartAsync(stoppingToken);
                         Log.Information("Started host for Config: {Name} proxying to {Url} on port: {Port} - logging into {directory}", service.Name, service.Url, handler.Port, _directory);
                         hostStarted = true;
+                        _port++;
                     }
                     catch (Exception ex) when (ex is IOException || ex is SocketException)
                     {
